@@ -11,13 +11,12 @@ use Params::Validate qw/ validate SCALAR ARRAYREF HASHREF /;
 our @EXPORT = qw/ create_sort /;
 
 my %operators = (
-    string  => 'cmp',
-    numeric => '<=>',
+    string  => '%s cmp %s',
+    numeric => '%s <=> %s',
 );
 
 if ( check_install( module => 'Sort::Naturally') ) {
-    load('Sort::Naturally');
-    $operators{natural} = 'Sort::Naturally::ncmp';
+    $operators{natural} = 'Sort::Naturally::ncmp( %s, %s )';
 }
 
 
@@ -81,6 +80,10 @@ sub create_sort {
     my @types    #
         = ref $args{type} ? @{ $args{type} } : ( $args{type} ) x @fields;
 
+    my $use_natural = grep { $_ eq 'natural' } @types;
+
+warn $use_natural;
+
     my @clauses = map {
         _build_clause(
             $_,    #
@@ -91,13 +94,18 @@ sub create_sort {
 
     my $pkg = caller();
 
-    my $sort_str = sprintf(
-        'package %s; $sub = sub { %s %s }',    #
-        $pkg,                                  #
-        '',                                    #join( '; ',   @precompute ),
-        join( ' || ', @clauses )
-    );
-warn $sort_str;
+    my $sub_tmpl = q!
+package %s;
+%s
+$sub = sub { %s }
+!;
+
+    my $sort_str = sprintf( $sub_tmpl,
+        $pkg,
+        $use_natural ? 'require Sort::Naturally;' : '',
+        join( ' || ', @clauses ) );
+
+    warn $sort_str;
     my $sub;
     eval $sort_str;
     die $@ if $@;
@@ -113,10 +121,13 @@ sub _build_clause {
 
     my @vars = lc $order eq 'asc' ? ( '$a', '$b' ) : ( '$b', '$a' );
 
-    return sprintf( '%s->{\'%s\'} %s %s->{\'%s\'}',
-        $vars[0], $field, $operator, $vars[1], $field );
+    return
+        sprintf( $operator, $vars[0] . "->{$field}", $vars[1] . "->{$field}" );
 }
 
+1;
+
+__END__
 
 sub ncmp {
     my ( $x, $x2, $y, $y2, $rv );    # scratch vars

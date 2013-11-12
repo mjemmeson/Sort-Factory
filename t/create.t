@@ -52,16 +52,15 @@ is_deeply [ sort $s4 @arr ],
 note "natural";
 
 if ( check_install( module => 'Sort::Naturally' ) ) {
-    load('Sort::Naturally');
 
     ok my $s5 = create_sort( field => 'foo', type => 'natural' ),
         "created natural sort sub";
 
     @arr = map +{ foo => $_ }, qw/ aaa aaa2 aaa1 aaa2foo aaa3 a3 ab2 ab22 /;
 
-    print Dumper( [ map { $_->{foo} } sort $s5 @arr ] );
-
-    is_deeply [ map { $_->{foo} } sort $s5 @arr ], [], "sorted naturally";
+    is_deeply [ map { $_->{foo} } sort $s5 @arr ],
+        [ "aaa", "aaa1", "aaa2", "aaa2foo", "aaa3", "ab2", "ab22", "a3" ],
+    "sorted naturally";
 
 }
 
